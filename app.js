@@ -438,6 +438,13 @@ async function apiSyncPull(isSilent = false) {
         }
       }
 
+      if (data.adminPasscode && typeof data.adminPasscode === 'string' && data.adminPasscode.trim()) {
+        if (AppState.adminPasscode !== data.adminPasscode) {
+          AppState.adminPasscode = data.adminPasscode;
+          localStorage.setItem(STORAGE_KEY_ADMIN_PASSCODE, data.adminPasscode);
+        }
+      }
+
       // 4. Auto-Seed Cloud Database if it was newly connected and this browser has local records/accounts
       const isCloudEmpty = (!data.claims || data.claims.length === 0) && (!data.users || data.users.length <= 1) && (!data.replenishments || data.replenishments.length === 0);
       const hasLocalData = AppState.claims.length > 0 || (AppState.users && AppState.users.length > 1) || (AppState.pcfAmount && AppState.pcfAmount !== 5000);
@@ -474,6 +481,7 @@ async function apiSyncPush() {
       users: AppState.users,
       pcfAmount: AppState.pcfAmount,
       replenishments: AppState.replenishments,
+      adminPasscode: AppState.adminPasscode,
       updatedAt: new Date().toISOString()
     };
     await fetch('/api/db', {
@@ -1337,6 +1345,8 @@ function switchAuthTab(tab) {
     if (btnRegister) btnRegister.classList.remove('active');
     if (formLogin) formLogin.style.display = 'block';
     if (formRegister) formRegister.style.display = 'none';
+    const emailInput = document.getElementById('loginEmail');
+    if (emailInput) onLoginEmailChange(emailInput.value);
   } else {
     if (btnRegister) btnRegister.classList.add('active');
     if (btnLogin) btnLogin.classList.remove('active');
@@ -1418,9 +1428,31 @@ function handleRegister(e) {
   showToast(`Welcome, ${name}! Your account has been registered.`, "success");
 }
 
+function onLoginEmailChange(val) {
+  const email = (val || '').trim().toLowerCase();
+  const pwdGroup = document.getElementById('loginPasswordGroup');
+  const pwdInput = document.getElementById('loginPassword');
+  if (!pwdGroup) return;
+
+  const admin = AppState.users.find(u => u.id === 'admin-you' || u.role === 'manager') || AppState.users[0];
+  const isAdmin = admin && admin.email && admin.email.toLowerCase() === email;
+
+  if (isAdmin) {
+    pwdGroup.style.display = 'block';
+    if (pwdInput) pwdInput.required = true;
+  } else {
+    pwdGroup.style.display = 'none';
+    if (pwdInput) {
+      pwdInput.required = false;
+      pwdInput.value = '';
+    }
+  }
+}
+
 async function handleLogin(e) {
   e.preventDefault();
   const emailInput = document.getElementById('loginEmail');
+  const pwdInput = document.getElementById('loginPassword');
   const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
 
   if (!email) {
@@ -1440,9 +1472,34 @@ async function handleLogin(e) {
     return showToast("Account not found with this email. Please ensure your cloud database is deployed or create an account.", "warning");
   }
 
+  // 3. Password Verification for Admin Account
+  const isAdmin = (user.role === 'manager' || user.id === 'admin-you');
+  if (isAdmin) {
+    const pwdGroup = document.getElementById('loginPasswordGroup');
+    if (pwdGroup) pwdGroup.style.display = 'block';
+
+    const enteredPwd = pwdInput ? pwdInput.value.trim() : '';
+    if (!enteredPwd) {
+      if (pwdInput) pwdInput.focus();
+      return showToast("Admin account selected. Please enter your Admin Password.", "info");
+    }
+
+    if (enteredPwd !== AppState.adminPasscode) {
+      if (pwdInput) {
+        pwdInput.focus();
+        pwdInput.select();
+      }
+      return showToast("Incorrect Admin Password! Access Denied.", "danger");
+    }
+  }
+
   closeModal('authModal');
   setCurrentUser(user.id);
-  showToast(`Welcome back, ${user.name}!`, "success");
+  if (isAdmin) {
+    showToast(`Welcome back, ${user.name}! Admin authorization verified.`, "success");
+  } else {
+    showToast(`Welcome back, ${user.name}!`, "success");
+  }
 }
 
 function handleLogout() {
@@ -1460,7 +1517,7 @@ function renderQuickLoginList() {
         ${u.avatar}
       </div>
       <div style="overflow:hidden;">
-        <div class="quick-user-name">${escapeHtml(u.name)}</div>
+        <div class="quick-user-name">${escapeHtml(u.name)}${u.role === 'manager' ? ' 🔒' : ''}</div>
         <div class="quick-user-role">${u.role.toUpperCase()}</div>
       </div>
     </div>
@@ -1468,8 +1525,21 @@ function renderQuickLoginList() {
 }
 
 function quickLoginAs(userId) {
+  const user = AppState.users.find(u => u.id === userId);
+  if (!user) return;
+
+  const isAdmin = (user.role === 'manager' || user.id === 'admin-you');
+  if (isAdmin) {
+    const entered = prompt("🔐 Admin Password Required\nPlease enter the Admin Password to access the Admin account:");
+    if (entered === null) return;
+    if (entered.trim() !== AppState.adminPasscode) {
+      return showToast("Incorrect Admin Password! Access Denied.", "danger");
+    }
+  }
+
   closeModal('authModal');
   setCurrentUser(userId);
+  showToast(`Welcome back, ${user.name}!`, "success");
 }
 
 function promptSwitchToAdmin() {

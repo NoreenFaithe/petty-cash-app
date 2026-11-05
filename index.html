@@ -526,12 +526,12 @@
           </div>
 
           <div class="form-group" style="background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; padding:12px;">
-            <label class="form-label" for="editAdminPasscode" style="color:#d97706; margin-bottom:4px;">
-              Admin Passcode (Security Code)
+            <label class="form-label" for="editAdminPasscode" style="color:#b45309; font-weight:700; margin-bottom:4px;">
+              🔒 Admin Password (Sign-In Passcode)
             </label>
             <input type="text" class="form-control" id="editAdminPasscode" placeholder="ADMIN2026" />
             <small style="color:var(--gray-500); font-size:0.75rem; display:block; margin-top:4px;">
-              This secret passcode is required when someone creates a Manager (Admin) account.
+              This password is required whenever someone signs in or switches to the Master Admin account. (Default: <code>ADMIN2026</code>).
             </small>
           </div>
         </div>
@@ -611,7 +611,21 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label" for="loginEmail">Your Registered Work Email *</label>
-            <input type="email" class="form-control" id="loginEmail" placeholder="e.g., sarah.jenkins@company.com" required />
+            <input type="email" class="form-control" id="loginEmail" placeholder="e.g., admin@company.com" oninput="onLoginEmailChange(this.value)" required />
+          </div>
+
+          <!-- Admin Password Group (Required when signing in as Admin) -->
+          <div class="form-group" id="loginPasswordGroup" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <label class="form-label" for="loginPassword" style="margin-bottom:0; color:#b45309; font-weight:700;">
+                🔒 Admin Password *
+              </label>
+              <span class="badge" style="background:#fef3c7; color:#92400e; font-size:0.7rem; padding:2px 8px;">Admin Protected</span>
+            </div>
+            <input type="password" class="form-control" id="loginPassword" placeholder="Enter admin password (Default: ADMIN2026)" autocomplete="current-password" />
+            <small style="color:var(--gray-500); font-size:0.75rem; display:block; margin-top:4px;">
+              Admin password is required to access executive finance tools.
+            </small>
           </div>
 
           <button type="submit" class="btn btn-primary" style="width:100%; margin-bottom:20px;">
