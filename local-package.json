@@ -1,0 +1,8 @@
+{
+  "name": "petty-cash-pro",
+  "version": "1.0.0",
+  "description": "Petty Cash & Reimbursement Monitoring Web Application",
+  "scripts": {
+    "build": "echo 'Static assets ready'"
+  }
+}
