@@ -384,35 +384,45 @@
               </button>
             </div>
 
-            <!-- Remote Team Real-Time Cloud Database (Supabase Sync) Card -->
+            <!-- Remote Team Real-Time Cloud Database (Vercel Redis Storage) Card -->
             <div style="background:var(--gray-50); border:1px solid var(--gray-200); border-radius:12px; padding:20px; margin-bottom:24px;">
               <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
                 <div style="display:flex; align-items:center; gap:12px;">
                   <div class="avatar-circle" style="width:40px; height:40px; font-size:1.2rem; background-color:#0284c7; color:#fff;">🌐</div>
                   <div>
-                    <h4 style="font-weight:700; color:var(--gray-900); margin:0;">Remote Team Real-Time Cloud Database</h4>
-                    <p style="font-size:0.8rem; color:var(--gray-500); margin:2px 0 0 0;">Synchronize all consultants across remote locations and devices in real time via free Supabase</p>
+                    <h4 style="font-weight:700; color:var(--gray-900); margin:0;">Central Team Cloud Database (Vercel Redis)</h4>
+                    <p style="font-size:0.8rem; color:var(--gray-500); margin:2px 0 0 0;">Synchronize all consultants across all browsers, laptops, and mobile devices in real time</p>
                   </div>
                 </div>
                 <span id="settingCloudStateBadge" class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; font-weight:600; padding:5px 12px;">⚪ Offline / Local Mode</span>
               </div>
 
-              <form onsubmit="handleSaveCloudConfig(event); return false;" style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; align-items:end;">
-                <div class="form-group" style="margin:0;">
-                  <label class="form-label" for="settingCloudUrl" style="font-size:0.78rem;">Supabase Project URL</label>
-                  <input type="url" class="form-control" id="settingCloudUrl" placeholder="https://your-project-id.supabase.co" style="font-size:0.85rem;" />
+              <div style="background:#fff; border:1px solid var(--gray-200); border-radius:8px; padding:12px 16px; margin-bottom:12px;">
+                <p style="margin:0; font-size:0.85rem; color:var(--gray-700); line-height:1.5;">
+                  ⚡ <strong>Automatic Sync Active:</strong> When deployed on Vercel with Redis connected, your application automatically saves and syncs all expenses, receipts, consultant accounts, and PCF float across all users. <strong>No manual keys or passwords needed!</strong>
+                </p>
+              </div>
+
+              <!-- Optional External Supabase Details (Collapsible) -->
+              <details style="font-size:0.82rem; color:var(--gray-600); margin-top:10px;">
+                <summary style="cursor:pointer; font-weight:600; color:var(--primary-color);">⚙️ Optional: External Supabase Direct Connection (Advanced)</summary>
+                <div style="margin-top:12px; padding:12px; background:#fff; border-radius:8px; border:1px solid var(--gray-200);">
+                  <p style="font-size:0.78rem; color:var(--gray-500); margin-bottom:10px;">If not using Vercel Redis, you can optionally connect an external Supabase PostgreSQL database:</p>
+                  <form onsubmit="handleSaveCloudConfig(event); return false;" style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; align-items:end;">
+                    <div class="form-group" style="margin:0;">
+                      <label class="form-label" for="settingCloudUrl" style="font-size:0.78rem;">Supabase Project URL</label>
+                      <input type="url" class="form-control" id="settingCloudUrl" placeholder="https://your-project-id.supabase.co" style="font-size:0.85rem;" />
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                      <label class="form-label" for="settingCloudKey" style="font-size:0.78rem;">Supabase Public Anon Key</label>
+                      <input type="password" class="form-control" id="settingCloudKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-size:0.85rem;" />
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm" style="height:38px; white-space:nowrap;">
+                      <span>🔗</span> Connect
+                    </button>
+                  </form>
                 </div>
-                <div class="form-group" style="margin:0;">
-                  <label class="form-label" for="settingCloudKey" style="font-size:0.78rem;">Supabase Public Anon Key</label>
-                  <input type="password" class="form-control" id="settingCloudKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-size:0.85rem;" />
-                </div>
-                <button type="submit" class="btn btn-primary btn-sm" style="height:38px; white-space:nowrap;">
-                  <span>🔗</span> Connect & Sync
-                </button>
-              </form>
-              <small style="color:var(--gray-500); font-size:0.75rem; display:block; margin-top:8px;">
-                💡 <em>Tip: You can also set this once in <code>config.js</code> so every consultant who opens your live web app is automatically connected. Run <code>schema.sql</code> once in your Supabase SQL Editor.</em>
-              </small>
+              </details>
             </div>
 
             <!-- Dark Mode & Currency Notice -->
@@ -561,26 +571,12 @@
             Register your consultant profile to submit expense claims in Philippine Peso (₱), upload receipts, and monitor reimbursement disbursements.
           </p>
 
-          <label class="form-label">Account Role *</label>
-          <div class="role-selector-grid">
-            <div class="role-option-card selected" id="roleCardConsultant" onclick="selectRegRole('consultant')">
-              <div class="role-option-title">💼 Consultant</div>
-              <div class="role-option-desc">Submit expenses in ₱, upload receipts, track own pending claims.</div>
-            </div>
-            <div class="role-option-card" id="roleCardManager" onclick="selectRegRole('manager')">
-              <div class="role-option-title">👑 Manager / Admin</div>
-              <div class="role-option-desc">View consolidated reports, release funds, adjust allocations.</div>
-            </div>
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:0.8rem; color:#1e40af;">
+            💼 <strong>Account Role: Team Consultant</strong><br>
+            <span style="font-size:0.75rem; color:#3b82f6;">Register your profile to submit expense claims in ₱ PHP, upload receipts, and monitor reimbursement status. (There is 1 Master Admin authorized to manage PCF float and approve disbursements).</span>
           </div>
           <input type="hidden" id="regRole" value="consultant" />
-
-          <div class="admin-code-box" id="adminPasscodeBox" style="display:none;">
-            <label class="form-label" style="color:#92400e;">Admin Passcode Required *</label>
-            <input type="password" class="form-control" id="regAdminCode" placeholder="Enter Admin Passcode" />
-            <small style="color:#b45309; font-size:0.72rem; margin-top:4px; display:block;">
-              Required for Manager role.
-            </small>
-          </div>
+          <input type="hidden" id="regAdminCode" value="" />
 
           <div class="form-group">
             <label class="form-label" for="regName">Full Name *</label>

@@ -189,6 +189,7 @@ function handleSaveAdminProfile(event) {
   // Save to persistent storage
   localStorage.setItem(STORAGE_KEY_ADMIN_PROFILE, JSON.stringify(updatedAdmin));
   localStorage.setItem(STORAGE_KEY_USERS_LIST, JSON.stringify(AppState.users));
+  apiSyncPush();
 
   // Always update active session to the updated admin
   AppState.currentUser = updatedAdmin;
@@ -218,10 +219,18 @@ function loadUsersList() {
         const dummyNames = ['Sarah Jenkins', 'Alex Rivera', 'Marcus Brody'];
         parsed = parsed.filter(u => !dummyIds.includes(u.id) && !dummyNames.includes(u.name));
 
-        // Ensure admin user remains the custom configured one
-        const customAdmin = AppState.users.find(u => u.id === 'admin-you' || u.role === 'manager');
-        const listWithoutOldAdmin = parsed.filter(u => u.id !== 'admin-you' && u.role !== 'manager');
-        AppState.users = [customAdmin || parsed[0], ...listWithoutOldAdmin];
+        // Ensure single Master Admin remains the sole manager, and all team accounts are kept
+        const customAdmin = AppState.users.find(u => u.id === 'admin-you' || u.role === 'manager') || AppState.users[0];
+        const consultants = [];
+        parsed.forEach(u => {
+          if (u.id === 'admin-you' || u.id === customAdmin.id) return;
+          // Keep all registered team accounts safely
+          consultants.push({
+            ...u,
+            role: 'consultant'
+          });
+        });
+        AppState.users = [customAdmin, ...consultants];
       }
     } catch (e) {
       console.warn("Using default users list", e);
@@ -325,10 +334,19 @@ async function checkServerConnection() {
 
 function initCentralApiSync() {
   apiSyncPull(true);
-  // Auto-sync every 10 seconds so all remote units stay in sync
+  // Auto-sync every 4 seconds so updates across all team devices appear almost instantaneously
   setInterval(() => {
     apiSyncPull(true);
-  }, 10000);
+  }, 4000);
+
+  // Instant sync when switching back to tab or device wakes up
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', () => apiSyncPull(true));
+    window.addEventListener('online', () => apiSyncPull(true));
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') apiSyncPull(true);
+    });
+  }
 }
 
 async function apiSyncPull(isSilent = false) {
@@ -338,27 +356,68 @@ async function apiSyncPull(isSilent = false) {
       const data = await res.json();
       let changed = false;
 
-      // 1. Sync claims across all laptops/units
+      // 1. Sync claims across all laptops/units (with non-destructive team merge)
       if (Array.isArray(data.claims)) {
-        if (data.claims.length > 0 || (AppState.claims.length === 0 && data.claims.length === 0)) {
-          if (JSON.stringify(AppState.claims) !== JSON.stringify(data.claims) && data.claims.length > 0) {
-            AppState.claims = data.claims;
+        if (data.claims.length > 0) {
+          const remoteIds = new Set(data.claims.map(c => c.id));
+          const localOnly = AppState.claims.filter(c => !remoteIds.has(c.id) && c.createdAt && (Date.now() - new Date(c.createdAt).getTime() < 300000));
+          
+          let mergedClaims = data.claims;
+          if (localOnly.length > 0) {
+            mergedClaims = [...localOnly, ...data.claims];
+            setTimeout(apiSyncPush, 200);
+          }
+
+          if (JSON.stringify(AppState.claims) !== JSON.stringify(mergedClaims)) {
+            AppState.claims = mergedClaims;
             localStorage.setItem(STORAGE_KEY_CLAIMS, JSON.stringify(AppState.claims));
             changed = true;
           }
         }
       }
 
-      // 2. Sync consultants list across all laptops/units
-      if (Array.isArray(data.users) && data.users.length > 0) {
-        const adminUser = AppState.users.find(u => u.id === 'admin-you' || u.role === 'manager') || AppState.users[0];
-        const remoteConsultants = data.users.filter(u => u.id !== 'admin-you' && u.role !== 'manager');
-        const merged = [adminUser, ...remoteConsultants];
+      // 2. Sync consultants & single admin across all laptops/units
+      if (Array.isArray(data.users)) {
+        // Enforce: ONLY ONE ADMIN allowed (customized admin profile)
+        const localAdmin = AppState.users.find(u => u.id === 'admin-you' || u.role === 'manager') || AppState.users[0];
+        const cloudAdmin = data.users.find(u => u.id === 'admin-you' || u.role === 'manager');
+        const activeAdmin = (cloudAdmin && cloudAdmin.email && cloudAdmin.email !== 'admin@company.com') ? cloudAdmin : localAdmin;
+
+        // Build unified list of consultants (no duplicates, no lost accounts)
+        const consultantMap = new Map();
+        
+        // 1. Add cloud consultants
+        data.users.forEach(u => {
+          if (u && u.id !== 'admin-you' && u.role !== 'manager') {
+            const key = (u.email || u.id).toLowerCase();
+            consultantMap.set(key, u);
+          }
+        });
+
+        // 2. Add local consultants (so any consultant created locally is preserved and pushed)
+        let localHasUnsynced = false;
+        AppState.users.forEach(u => {
+          if (u && u.id !== 'admin-you' && u.role !== 'manager') {
+            const key = (u.email || u.id).toLowerCase();
+            if (!consultantMap.has(key)) {
+              consultantMap.set(key, u);
+              localHasUnsynced = true;
+            }
+          }
+        });
+
+        const merged = [activeAdmin, ...Array.from(consultantMap.values())];
+
         if (JSON.stringify(AppState.users) !== JSON.stringify(merged)) {
           AppState.users = merged;
           localStorage.setItem(STORAGE_KEY_USERS_LIST, JSON.stringify(AppState.users));
           populateDropdowns();
+          renderQuickLoginList();
           changed = true;
+        }
+
+        if (localHasUnsynced) {
+          setTimeout(apiSyncPush, 150);
         }
       }
 
@@ -379,6 +438,14 @@ async function apiSyncPull(isSilent = false) {
         }
       }
 
+      // 4. Auto-Seed Cloud Database if it was newly connected and this browser has local records/accounts
+      const isCloudEmpty = (!data.claims || data.claims.length === 0) && (!data.users || data.users.length <= 1) && (!data.replenishments || data.replenishments.length === 0);
+      const hasLocalData = AppState.claims.length > 0 || (AppState.users && AppState.users.length > 1) || (AppState.pcfAmount && AppState.pcfAmount !== 5000);
+      if (isCloudEmpty && hasLocalData) {
+        console.log("Central database is newly connected and empty. Seeding with current accounts and records...");
+        apiSyncPush();
+      }
+
       if (changed) {
         renderAll();
       }
@@ -386,6 +453,13 @@ async function apiSyncPull(isSilent = false) {
       const statusEl = document.getElementById('serverSyncStatus');
       if (statusEl && !AppState.cloudConfig.connected) {
         statusEl.innerHTML = `<span class="badge" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;font-weight:700;padding:4px 8px;border-radius:6px;" title="Connected to central database. All laptops share the same live data.">● Central Synced</span>`;
+      }
+
+      const cloudBadge = document.getElementById('settingCloudStateBadge');
+      if (cloudBadge && !AppState.cloudConfig.connected) {
+        cloudBadge.className = 'badge';
+        cloudBadge.style.cssText = 'background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-weight:700; padding:5px 12px;';
+        cloudBadge.textContent = '🟢 Central Synced (Vercel Redis)';
       }
     }
   } catch (err) {
@@ -1344,13 +1418,26 @@ function handleRegister(e) {
   showToast(`Welcome, ${name}! Your account has been registered.`, "success");
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault();
-  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const emailInput = document.getElementById('loginEmail');
+  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
 
-  const user = AppState.users.find(u => u.email.toLowerCase() === email);
+  if (!email) {
+    return showToast("Please enter your registered work email.", "warning");
+  }
+
+  // 1. Check local users list
+  let user = AppState.users.find(u => u.email && u.email.toLowerCase() === email);
+
+  // 2. If not found in local browser, pull latest accounts from central cloud database
   if (!user) {
-    return showToast("Account not found with this email. Please check spelling or create an account.", "warning");
+    await apiSyncPull(true);
+    user = AppState.users.find(u => u.email && u.email.toLowerCase() === email);
+  }
+
+  if (!user) {
+    return showToast("Account not found with this email. Please ensure your cloud database is deployed or create an account.", "warning");
   }
 
   closeModal('authModal');
