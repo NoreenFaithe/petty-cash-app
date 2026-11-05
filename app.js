@@ -77,11 +77,21 @@ function initApp() {
   loadStoredUser();
   loadClaimsData();
   setupEventListeners();
+  initSidebarState();
   populateDropdowns();
   updateUserInterface();
   checkServerConnection();
   initCloudSync();
   initCentralApiSync();
+  renderAll();
+
+  // If visitor is NOT signed in (e.g. Incognito window or fresh device), prompt to Sign In!
+  if (!AppState.currentUser) {
+    switchView('transactions');
+    setTimeout(() => {
+      openAuthModal('login');
+    }, 250);
+  }
 }
 
 // 1. Admin Account Customization
@@ -247,10 +257,17 @@ function saveUsersList() {
 }
 
 function loadStoredUser() {
-  const savedUserId = localStorage.getItem(STORAGE_KEY_USER) || localStorage.getItem("PETTY_CASH_USER_V4_PHP");
-  const foundUser = AppState.users.find(u => u.id === savedUserId);
-  // Default to the Admin Account
-  AppState.currentUser = foundUser || AppState.users[0];
+  const savedUserId = localStorage.getItem(STORAGE_KEY_USER);
+  if (savedUserId) {
+    const foundUser = AppState.users.find(u => u.id === savedUserId);
+    if (foundUser) {
+      AppState.currentUser = foundUser;
+      return;
+    }
+  }
+  // NEVER default to Admin in Incognito or on fresh browsers!
+  AppState.currentUser = null;
+  AppState.currentView = 'transactions';
 }
 
 function setCurrentUser(userId) {
@@ -1503,6 +1520,11 @@ async function handleLogin(e) {
 }
 
 function handleLogout() {
+  AppState.currentUser = null;
+  localStorage.removeItem(STORAGE_KEY_USER);
+  switchView('transactions');
+  updateUserInterface();
+  renderAll();
   openAuthModal('login');
   showToast("You have been signed out.", "info");
 }
@@ -1620,7 +1642,83 @@ function populateDropdowns() {
 
 function updateUserInterface() {
   const user = AppState.currentUser;
-  if (!user) return;
+  
+  const btnTopSignIn = document.getElementById('btnTopSignIn');
+  const btnTopSignOut = document.getElementById('btnTopSignOut');
+
+  if (!user) {
+    // Visitor is NOT signed in (e.g. Incognito window or logged out)
+    if (btnTopSignIn) btnTopSignIn.style.display = 'inline-flex';
+    if (btnTopSignOut) btnTopSignOut.style.display = 'none';
+
+    // Sidebar User Info
+    const sidebarAvatar = document.getElementById('sidebarUserAvatar');
+    const sidebarName = document.getElementById('sidebarUserName');
+    const sidebarRole = document.getElementById('sidebarUserRole');
+    if (sidebarAvatar) {
+      sidebarAvatar.textContent = '?';
+      sidebarAvatar.style.backgroundColor = '#64748b';
+    }
+    if (sidebarName) sidebarName.textContent = 'Guest / Sign In';
+    if (sidebarRole) {
+      sidebarRole.textContent = 'NOT SIGNED IN';
+      sidebarRole.className = 'user-role-tag';
+      sidebarRole.style.background = '#e2e8f0';
+      sidebarRole.style.color = '#475569';
+    }
+
+    // Hide ALL Admin sections
+    const navSectionAdmin = document.getElementById('navSectionAdmin');
+    const navConsolidated = document.getElementById('nav-consolidated');
+    const navSectionConfig = document.getElementById('navSectionConfig');
+    const navCreateAccount = document.getElementById('nav-create-account');
+    const navAdminProfile = document.getElementById('nav-admin-profile');
+    const navSettings = document.getElementById('nav-settings');
+
+    if (navSectionAdmin) navSectionAdmin.style.display = 'none';
+    if (navConsolidated) navConsolidated.style.display = 'none';
+    if (navSectionConfig) navSectionConfig.style.display = 'none';
+    if (navCreateAccount) navCreateAccount.style.display = 'none';
+    if (navAdminProfile) navAdminProfile.style.display = 'none';
+    if (navSettings) navSettings.style.display = 'none';
+
+    // Topbar Controls
+    const topbarRoleSwitch = document.getElementById('topbarRoleSwitchContainer');
+    const topbarConsultantPill = document.getElementById('topbarConsultantPill');
+    const btnTopAdminProfile = document.getElementById('btnTopAdminProfile');
+    const btnTopCreateAccount = document.getElementById('btnTopCreateAccount');
+
+    if (topbarRoleSwitch) topbarRoleSwitch.style.display = 'none';
+    if (topbarConsultantPill) topbarConsultantPill.style.display = 'none';
+    if (btnTopAdminProfile) btnTopAdminProfile.style.display = 'none';
+    if (btnTopCreateAccount) btnTopCreateAccount.style.display = 'none';
+
+    // Role Help Banner
+    const roleHelpBanner = document.getElementById('roleHelpBanner');
+    if (roleHelpBanner) {
+      roleHelpBanner.innerHTML = `
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.5rem;">🔒</span>
+            <div>
+              <strong style="color:#0f172a; font-size:0.95rem;">Please Sign In to Access Your Workspace</strong>
+              <div style="color:#64748b; font-size:0.8rem; margin-top:2px;">
+                Consultants sign in with their registered email. Admin access requires password authentication.
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="openAuthModal('login')">
+            <span>🔑</span> Sign In Now
+          </button>
+        </div>
+      `;
+    }
+    return;
+  }
+
+  // When User IS Logged In:
+  if (btnTopSignIn) btnTopSignIn.style.display = 'none';
+  if (btnTopSignOut) btnTopSignOut.style.display = 'inline-flex';
 
   const isManager = user.role === 'manager';
 
@@ -1766,6 +1864,9 @@ function getFilteredClaims() {
   const user = AppState.currentUser;
   const isManager = user && user.role === 'manager';
   
+  // If not logged in, show no claims for privacy
+  if (!user) return [];
+
   return AppState.claims.filter(claim => {
     if (AppState.currentView === 'my-claims') {
       if (claim.consultantId !== user.id) return false;
@@ -1818,7 +1919,7 @@ function updateKPICards() {
 
   const scopeClaims = (isManager && AppState.currentView !== 'my-claims')
     ? AppState.claims
-    : AppState.claims.filter(c => c.consultantId === user.id);
+    : (user ? AppState.claims.filter(c => c.consultantId === user.id) : []);
 
   let pendingAmount = 0;
   let pendingCount = 0;
@@ -2489,6 +2590,12 @@ function handleExpenseSubmit(event) {
 }
 
 function openSubmitExpenseModal() {
+  if (!AppState.currentUser) {
+    showToast("Please sign in to submit expenses.", "warning");
+    openAuthModal('login');
+    return;
+  }
+
   AppState.editingClaim = null;
   AppState.pendingUploadReceipt = null;
   resetExpenseForm();
@@ -3169,6 +3276,28 @@ function closeModal(modalId) {
   if (m) {
     m.style.display = 'none';
     document.body.style.overflow = '';
+  }
+}
+
+function toggleSidebarCollapse() {
+  const sidebar = document.getElementById('appSidebar');
+  const collapseIcon = document.getElementById('collapseIcon');
+  if (!sidebar) return;
+
+  const isCollapsed = sidebar.classList.toggle('collapsed');
+  if (collapseIcon) {
+    collapseIcon.textContent = isCollapsed ? '▶' : '◀';
+  }
+  localStorage.setItem('PETTY_CASH_SIDEBAR_COLLAPSED', isCollapsed ? 'true' : 'false');
+}
+
+function initSidebarState() {
+  const savedState = localStorage.getItem('PETTY_CASH_SIDEBAR_COLLAPSED');
+  const sidebar = document.getElementById('appSidebar');
+  const collapseIcon = document.getElementById('collapseIcon');
+  if (sidebar && savedState === 'true') {
+    sidebar.classList.add('collapsed');
+    if (collapseIcon) collapseIcon.textContent = '▶';
   }
 }
 

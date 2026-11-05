@@ -1,60 +1,114 @@
 /* Petty Cash & Reimbursement Monitoring - Modern SaaS Design System */
 
 :root {
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-light: #eef2ff;
-  --primary-border: #c7d2fe;
+  /* Soft Pastel Accent Palette */
+  --primary: #7c77c6;              /* Soft Wisteria / Iris */
+  --primary-hover: #6a64b8;
+  --primary-light: #f4f3fb;        /* Softest Pastel Lavender */
+  --primary-border: #ddd8f3;
+  --primary-text: #4d4694;
 
-  --success: #10b981;
-  --success-hover: #059669;
-  --success-light: #ecfdf5;
-  --success-text: #065f46;
-  --success-border: #a7f3d0;
+  --success: #34a371;              /* Soft Sage Green */
+  --success-hover: #2b885e;
+  --success-light: #f0fdf4;        /* Pastel Mint Cream */
+  --success-text: #166534;
+  --success-border: #bbf7d0;
 
-  --warning: #f59e0b;
-  --warning-hover: #d97706;
-  --warning-light: #fffbeb;
-  --warning-text: #92400e;
-  --warning-border: #fde68a;
+  --warning: #e28743;              /* Soft Apricot Peach */
+  --warning-hover: #c97130;
+  --warning-light: #fff7ed;        /* Pastel Warm Peach */
+  --warning-text: #9a3412;
+  --warning-border: #fed7aa;
 
-  --info: #0284c7;
-  --info-light: #f0f9ff;
-  --info-text: #075985;
+  --info: #3b9ed8;                 /* Soft Sky Blue */
+  --info-light: #f0f9ff;          /* Pastel Ice Blue */
+  --info-text: #0369a1;
   --info-border: #bae6fd;
 
-  --danger: #ef4444;
-  --danger-light: #fef2f2;
-  --danger-text: #991b1b;
-  --danger-border: #fecaca;
+  --danger: #e57373;               /* Soft Pastel Rose */
+  --danger-light: #fff1f2;         /* Pastel Blush */
+  --danger-text: #9f1239;
+  --danger-border: #fecdd3;
 
-  --gray-50: #f8fafc;
-  --gray-100: #f1f5f9;
-  --gray-200: #e2e8f0;
-  --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
-  --gray-500: #64748b;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-800: #1e293b;
-  --gray-900: #0f172a;
+  /* Soft Pastel Grayscale & Neutrals */
+  --gray-50: #fbfbfe;
+  --gray-100: #f4f3f9;
+  --gray-200: #eae8f2;
+  --gray-300: #dcd8e8;
+  --gray-400: #a5a0b8;
+  --gray-500: #7b7593;
+  --gray-600: #5c5575;
+  --gray-700: #423d58;
+  --gray-800: #2c2740;
+  --gray-900: #1b172a;
 
+  /* Surfaces & Pastel Cards */
   --card-bg: #ffffff;
-  --body-bg: #f8fafc;
-  --sidebar-bg: #0f172a;
-  --sidebar-text: #94a3b8;
+  --body-bg: #f8f7fc;              /* Ethereal Pastel Pearl Off-White */
+  --sidebar-bg: #f6f4fa;           /* Soft Pastel Lavender Tint Sidebar */
+  --sidebar-border: #eae6f5;
+  --sidebar-text: #6b6485;
+  --sidebar-active: #5f57b5;
+  --sidebar-active-bg: #eae5f9;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  --shadow-sm: 0 2px 4px 0 rgba(108, 92, 145, 0.04);
+  --shadow-md: 0 6px 16px -2px rgba(108, 92, 145, 0.06), 0 2px 4px -1px rgba(108, 92, 145, 0.03);
+  --shadow-lg: 0 12px 24px -4px rgba(108, 92, 145, 0.08), 0 4px 8px -2px rgba(108, 92, 145, 0.04);
+  --shadow-xl: 0 20px 30px -6px rgba(108, 92, 145, 0.1);
+}
+
+[data-theme="dark"] {
+  --primary: #9d97e2;
+  --primary-hover: #ada7ea;
+  --primary-light: #26223d;
+  --primary-border: #433c6e;
+  --primary-text: #e0dcf8;
+
+  --success: #4ade80;
+  --success-hover: #6ee7b7;
+  --success-light: #142e20;
+  --success-text: #86efac;
+  --success-border: #1f4a31;
+
+  --warning: #fb923c;
+  --warning-hover: #fdba74;
+  --warning-light: #331f13;
+  --warning-text: #fdba74;
+  --warning-border: #59351e;
+
+  --info: #38bdf8;
+  --info-light: #11283a;
+  --info-text: #7dd3fc;
+  --info-border: #1c4563;
+
+  --danger: #f87171;
+  --danger-light: #34171a;
+  --danger-text: #fca5a5;
+  --danger-border: #5a272c;
+
+  --body-bg: #151322;
+  --card-bg: #1e1b2f;
+  --sidebar-bg: #181528;
+  --sidebar-border: #29243f;
+  --sidebar-text: #9e97ba;
   --sidebar-active: #ffffff;
-  --sidebar-active-bg: #1e293b;
+  --sidebar-active-bg: #2d2749;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --gray-50: #1a172a;
+  --gray-100: #221e36;
+  --gray-200: #2d2747;
+  --gray-300: #3c345e;
+  --gray-400: #7b719e;
+  --gray-500: #9e96c0;
+  --gray-600: #c1bce0;
+  --gray-700: #dedaf2;
+  --gray-800: #f1effb;
+  --gray-900: #ffffff;
 }
 
 * {
@@ -78,7 +132,7 @@ body {
   min-height: 100vh;
 }
 
-/* Sidebar */
+/* Sidebar with Pastel & Collapsible Capabilities */
 .sidebar {
   width: 260px;
   background-color: var(--sidebar-bg);
@@ -86,73 +140,125 @@ body {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
-  transition: all 0.25s ease;
+  border-right: 1px solid var(--sidebar-border);
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
   z-index: 40;
+  position: relative;
 }
 
 .sidebar-header {
-  padding: 24px 20px;
+  padding: 20px 16px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.sidebar-collapse-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  background: var(--card-bg);
+  color: var(--gray-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.72rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  flex-shrink: 0;
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary-border);
+  transform: scale(1.05);
+}
+
+.topbar-collapse-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+  background: var(--card-bg);
+  color: var(--gray-600);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  margin-right: 12px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.topbar-collapse-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary-border);
 }
 
 .brand-icon {
-  width: 38px;
-  height: 38px;
-  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 100%);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-weight: 700;
-  font-size: 1.2rem;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4);
+  font-size: 1.15rem;
+  box-shadow: 0 3px 8px rgba(165, 180, 252, 0.4);
+  flex-shrink: 0;
 }
 
 .brand-title {
-  color: #fff;
+  color: var(--gray-900);
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   letter-spacing: -0.02em;
 }
 
 .brand-sub {
-  font-size: 0.72rem;
-  color: var(--gray-400);
+  font-size: 0.7rem;
+  color: var(--gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .sidebar-nav {
-  padding: 20px 12px;
+  padding: 16px 10px;
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .nav-section-title {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  color: var(--gray-500);
-  font-weight: 600;
+  color: var(--gray-400);
+  font-weight: 700;
   letter-spacing: 0.06em;
-  padding: 12px 12px 6px 12px;
+  padding: 12px 10px 4px 10px;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 9px 12px;
   border-radius: var(--radius-md);
   color: var(--sidebar-text);
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   transition: all 0.2s;
   cursor: pointer;
@@ -160,29 +266,32 @@ body {
 }
 
 .nav-link:hover {
-  color: #fff;
-  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--primary);
+  background-color: var(--primary-light);
 }
 
 .nav-link.active {
-  color: #fff;
-  background-color: var(--primary);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  color: var(--primary);
+  background-color: var(--sidebar-active-bg);
+  border-color: var(--primary-border);
+  font-weight: 600;
 }
 
 .nav-link .badge {
   margin-left: auto;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   padding: 2px 7px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+  font-weight: 700;
 }
 
 .sidebar-footer {
-  padding: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(0, 0, 0, 0.2);
+  padding: 14px 12px;
+  border-top: 1px solid var(--sidebar-border);
+  background: var(--gray-50);
 }
 
 .user-badge-mini {
@@ -192,16 +301,17 @@ body {
 }
 
 .avatar-circle {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   color: #fff;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
 }
 
 .user-info-text {
@@ -211,13 +321,81 @@ body {
 .user-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--gray-900);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .user-role-tag {
+  font-size: 0.7rem;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* =================================================================== */
+/* COLLAPSED SIDEBAR STATE (Compact Icon Mode) */
+/* =================================================================== */
+.sidebar.collapsed {
+  width: 74px;
+}
+
+.sidebar.collapsed .brand-text,
+.sidebar.collapsed .nav-text,
+.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .nav-section-title,
+.sidebar.collapsed .user-info-text {
+  display: none !important;
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
+  padding: 18px 8px;
+  position: relative;
+}
+
+.sidebar.collapsed .sidebar-header > div {
+  justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-collapse-btn {
+  position: absolute;
+  right: -13px;
+  top: 22px;
+  background: var(--card-bg);
+  box-shadow: 0 2px 8px rgba(108, 92, 145, 0.15);
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  z-index: 50;
+  transform: rotate(180deg);
+}
+
+.sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 12px 0;
+  border-radius: var(--radius-md);
+  margin: 0 4px;
+}
+
+.sidebar.collapsed .nav-icon {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  padding: 12px 6px;
+}
+
+.sidebar.collapsed .sidebar-footer > div {
+  justify-content: center !important;
+}
+
+.sidebar.collapsed .sidebar-footer .btn-icon-only {
+  display: none;
+}
   font-size: 0.72rem;
   display: inline-block;
   padding: 1px 6px;

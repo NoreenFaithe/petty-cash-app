@@ -14,63 +14,68 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar" id="appSidebar">
       <div class="sidebar-header">
-        <div class="brand-icon">₱</div>
-        <div>
-          <div class="brand-title">PettyCash Pro</div>
-          <div class="brand-sub">Consolidated Hub • PHP</div>
+        <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
+          <div class="brand-icon">₱</div>
+          <div class="brand-text">
+            <div class="brand-title">PettyCash Pro</div>
+            <div class="brand-sub">Consolidated Hub • PHP</div>
+          </div>
         </div>
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapse()" title="Collapse / Expand Sidebar">
+          <span id="collapseIcon">◀</span>
+        </button>
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-section-title" id="navSectionAdmin">Executive & Admin</div>
+        <div class="nav-section-title" id="navSectionAdmin" style="display:none;">Executive & Admin</div>
         
         <!-- Consolidated Reports for Admin -->
-        <a class="nav-link active" id="nav-consolidated" onclick="switchView('consolidated')">
-          <span style="font-size:1.1rem;">📊</span>
-          <span>Consolidated Reports</span>
-          <span class="badge" style="background:#38bdf8; color:#0f172a; font-weight:700;">ADMIN</span>
+        <a class="nav-link" id="nav-consolidated" onclick="switchView('consolidated')" style="display:none;" title="Consolidated Reports">
+          <span class="nav-icon" style="font-size:1.1rem;">📊</span>
+          <span class="nav-text">Consolidated Reports</span>
+          <span class="badge nav-badge" style="background:#ddd6fe; color:#4338ca; font-weight:700;">ADMIN</span>
         </a>
 
         <div class="nav-section-title" id="navSectionMonitoring" style="margin-top:8px;">Transaction Monitoring</div>
 
-        <a class="nav-link" id="nav-transactions" onclick="switchView('transactions')">
-          <span style="font-size:1.1rem;">📑</span>
-          <span id="navTransactionsLabel">All Transactions</span>
-          <span class="badge" id="tabBadgeAll">0</span>
+        <a class="nav-link active" id="nav-transactions" onclick="switchView('transactions')" title="Transaction Records">
+          <span class="nav-icon" style="font-size:1.1rem;">📑</span>
+          <span class="nav-text" id="navTransactionsLabel">Transaction Records</span>
+          <span class="badge nav-badge" id="tabBadgeAll">0</span>
         </a>
 
-        <a class="nav-link" id="nav-my-claims" onclick="switchView('my-claims')" style="display:none;">
-          <span style="font-size:1.1rem;">💼</span>
-          <span>My Claims</span>
+        <a class="nav-link" id="nav-my-claims" onclick="switchView('my-claims')" style="display:none;" title="My Claims">
+          <span class="nav-icon" style="font-size:1.1rem;">💼</span>
+          <span class="nav-text">My Claims</span>
         </a>
 
-        <a class="nav-link" id="nav-submit" onclick="openSubmitExpenseModal()">
-          <span style="font-size:1.1rem;">➕</span>
-          <span>Submit Expense</span>
+        <a class="nav-link" id="nav-submit" onclick="openSubmitExpenseModal()" title="Submit Expense">
+          <span class="nav-icon" style="font-size:1.1rem;">➕</span>
+          <span class="nav-text">Submit Expense</span>
         </a>
 
-        <div class="nav-section-title" id="navSectionConfig" style="margin-top:8px;">Team & Configuration</div>
+        <div class="nav-section-title" id="navSectionConfig" style="margin-top:8px; display:none;">Team & Configuration</div>
 
-        <a class="nav-link" id="nav-create-account" onclick="openAuthModal('register')">
-          <span style="font-size:1.1rem;">👥</span>
-          <span>Create Account</span>
+        <a class="nav-link" id="nav-create-account" onclick="openAuthModal('register')" style="display:none;" title="Create Account">
+          <span class="nav-icon" style="font-size:1.1rem;">👥</span>
+          <span class="nav-text">Create Account</span>
         </a>
 
-        <a class="nav-link" id="nav-admin-profile" onclick="openEditAdminModal()">
-          <span style="font-size:1.1rem;">👑</span>
-          <span>My Admin Profile</span>
+        <a class="nav-link" id="nav-admin-profile" onclick="openEditAdminModal()" style="display:none;" title="My Admin Profile">
+          <span class="nav-icon" style="font-size:1.1rem;">👑</span>
+          <span class="nav-text">My Admin Profile</span>
         </a>
 
-        <a class="nav-link" id="nav-settings" onclick="switchView('settings')">
-          <span style="font-size:1.1rem;">⚙️</span>
-          <span>Settings & Data</span>
+        <a class="nav-link" id="nav-settings" onclick="switchView('settings')" style="display:none;" title="Settings & Data">
+          <span class="nav-icon" style="font-size:1.1rem;">⚙️</span>
+          <span class="nav-text">Settings & Data</span>
         </a>
 
         <div class="nav-section-title" style="margin-top:8px;">Help & Guide</div>
 
         <a class="nav-link" id="nav-user-guide" onclick="openUserGuideModal()" style="cursor:pointer;" title="View User Guide & Instructions">
-          <span style="font-size:1.1rem;">📖</span>
-          <span>User Guide</span>
+          <span class="nav-icon" style="font-size:1.1rem;">📖</span>
+          <span class="nav-text">User Guide</span>
         </a>
       </nav>
 
@@ -78,10 +83,10 @@
       <div class="sidebar-footer">
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <div class="user-badge-mini" id="sidebarUserBadge" onclick="handleSidebarUserClick()" style="cursor:pointer;" title="User Profile">
-            <div class="avatar-circle" id="sidebarUserAvatar">FA</div>
+            <div class="avatar-circle" id="sidebarUserAvatar" style="background-color:#64748b;">?</div>
             <div class="user-info-text">
-              <div class="user-name" id="sidebarUserName">Finance Admin</div>
-              <div class="user-role-tag role-tag-manager" id="sidebarUserRole">ADMIN (APPROVER)</div>
+              <div class="user-name" id="sidebarUserName">Sign In</div>
+              <div class="user-role-tag" id="sidebarUserRole" style="background:#e2e8f0; color:#475569;">GUEST</div>
             </div>
           </div>
           <button class="btn btn-sm btn-icon-only" onclick="handleLogout()" title="Sign Out / Switch Account" style="background:rgba(255,255,255,0.1); color:#fff; border:none; border-radius:6px;">
@@ -98,6 +103,9 @@
       <header class="topbar">
         <div class="topbar-left">
           <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" title="Toggle Menu">☰</button>
+          <button class="topbar-collapse-btn" id="topbarCollapseBtn" onclick="toggleSidebarCollapse()" title="Toggle Sidebar (Collapse / Expand)">
+            <span>☰</span>
+          </button>
           <div>
             <h1 class="page-title" id="headerPageTitle">Executive Consolidated Reports (₱ PHP)</h1>
             <p class="page-subtitle" id="headerPageSubtitle">Philippine Peso petty cash exposure, multi-consultant ledger, and live updates</p>
@@ -119,7 +127,7 @@
           <div id="serverSyncStatus"></div>
 
           <!-- Quick User Persona Switcher -->
-          <div class="role-switch-container" id="topbarRoleSwitchContainer">
+          <div class="role-switch-container" id="topbarRoleSwitchContainer" style="display:none;">
             <span class="role-switch-label">Logged In As:</span>
             <select class="role-select" id="topUserSelect" title="Switch User Role to test consultant vs admin perspective">
               <!-- Populated dynamically -->
@@ -139,15 +147,21 @@
           </div>
 
           <!-- Customize Admin Account Button -->
-          <button class="btn btn-secondary btn-sm" id="btnTopAdminProfile" onclick="openEditAdminModal()" title="Customize your Admin Name and Email">
+          <button class="btn btn-secondary btn-sm" id="btnTopAdminProfile" onclick="openEditAdminModal()" title="Customize your Admin Name and Email" style="display:none;">
             <span>✏️</span>
             <span>Admin Profile</span>
           </button>
 
           <!-- Create Account Button -->
-          <button class="btn btn-secondary btn-sm" id="btnTopCreateAccount" onclick="openAuthModal('register')" title="Create a new account">
+          <button class="btn btn-secondary btn-sm" id="btnTopCreateAccount" onclick="openAuthModal('register')" title="Create a new account" style="display:none;">
             <span>👤</span>
             <span>+ Create Account</span>
+          </button>
+
+          <!-- Sign In Button (Shown when not logged in) -->
+          <button class="btn btn-primary btn-sm" id="btnTopSignIn" onclick="openAuthModal('login')" title="Sign In to your account" style="display:inline-flex; font-weight:700;">
+            <span>🔑</span>
+            <span>Sign In</span>
           </button>
 
           <!-- Quick Submit Action -->
@@ -157,7 +171,7 @@
           </button>
 
           <!-- Logout Button -->
-          <button class="btn btn-sm btn-secondary" onclick="handleLogout()" title="Sign Out">
+          <button class="btn btn-sm btn-secondary" id="btnTopSignOut" onclick="handleLogout()" title="Sign Out" style="display:none;">
             <span>🚪</span> Sign Out
           </button>
         </div>
