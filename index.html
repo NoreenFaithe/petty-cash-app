@@ -27,13 +27,13 @@
       </div>
 
       <nav class="sidebar-nav">
-        <div class="nav-section-title" id="navSectionAdmin" style="display:none;">Executive & Admin</div>
+        <div class="nav-section-title" id="navSectionAdmin" style="display:none;">Company Overview</div>
         
-        <!-- Consolidated Reports for Admin -->
-        <a class="nav-link" id="nav-consolidated" onclick="switchView('consolidated')" style="display:none;" title="Consolidated Reports">
+        <!-- Consolidated Reports / PCF Status Dashboard -->
+        <a class="nav-link" id="nav-consolidated" onclick="switchView('consolidated')" style="display:none;" title="Dashboard & PCF Status">
           <span class="nav-icon" style="font-size:1.1rem;">📊</span>
-          <span class="nav-text">Consolidated Reports</span>
-          <span class="badge nav-badge" style="background:#ddd6fe; color:#4338ca; font-weight:700;">ADMIN</span>
+          <span class="nav-text" id="navConsolidatedLabel">Dashboard & PCF Status</span>
+          <span class="badge nav-badge" id="navConsolidatedBadge" style="background:#dcfce7; color:#15803d; font-weight:700;">LIVE STATUS</span>
         </a>
 
         <div class="nav-section-title" id="navSectionMonitoring" style="margin-top:8px;">Transaction Monitoring</div>

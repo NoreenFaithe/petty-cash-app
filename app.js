@@ -307,8 +307,8 @@ function setCurrentUser(userId) {
   
   if (user.role === 'consultant') {
     AppState.filters.consultantId = "all";
-    if (AppState.currentView === 'consolidated' || AppState.currentView === 'settings') {
-      switchView('transactions');
+    if (AppState.currentView === 'settings') {
+      switchView('consolidated');
     }
   }
   
@@ -1624,7 +1624,15 @@ async function handleLogin(e) {
 
   // 2. Identify target user
   const masterAdmin = AppState.users.find(u => u.role === 'manager' || u.id === 'admin-you') || AppState.users[0];
-  const isAdminEmail = (masterAdmin && masterAdmin.email && masterAdmin.email.toLowerCase() === email) || email === 'admin@company.com';
+  const adminEmails = [
+    'admin@company.com',
+    'noreenfaithepuzon@gmail.com',
+    'yahshua.puzonnl@gmail.com'
+  ];
+  if (masterAdmin && masterAdmin.email) {
+    adminEmails.push(masterAdmin.email.toLowerCase());
+  }
+  const isAdminEmail = adminEmails.includes(email);
 
   let user = AppState.users.find(u => u.email && u.email.toLowerCase() === email);
   if (!user && isAdminEmail) {
@@ -1898,15 +1906,36 @@ function updateUserInterface() {
   // Sidebar Navigation Items
   const navSectionAdmin = document.getElementById('navSectionAdmin');
   const navConsolidated = document.getElementById('nav-consolidated');
+  const navConsolidatedLabel = document.getElementById('navConsolidatedLabel');
+  const navConsolidatedBadge = document.getElementById('navConsolidatedBadge');
   const navTransactionsLabel = document.getElementById('navTransactionsLabel');
   const navSectionConfig = document.getElementById('navSectionConfig');
   const navCreateAccount = document.getElementById('nav-create-account');
   const navAdminProfile = document.getElementById('nav-admin-profile');
   const navSettings = document.getElementById('nav-settings');
 
-  if (navSectionAdmin) navSectionAdmin.style.display = isManager ? 'block' : 'none';
-  if (navConsolidated) navConsolidated.style.display = isManager ? 'flex' : 'none';
-  if (navTransactionsLabel) navTransactionsLabel.textContent = isManager ? 'All Transactions' : 'My Dashboard & Claims';
+  // Both Admin and Consultants can access the live PCF Dashboard (Consultants have read-only view)
+  if (navConsolidated) navConsolidated.style.display = 'flex';
+  if (navSectionAdmin) {
+    navSectionAdmin.style.display = 'block';
+    navSectionAdmin.textContent = isManager ? 'Executive & Admin' : 'Company Overview';
+  }
+  if (navConsolidatedLabel) {
+    navConsolidatedLabel.textContent = isManager ? 'Consolidated Reports' : 'Dashboard & PCF Status';
+  }
+  if (navConsolidatedBadge) {
+    if (isManager) {
+      navConsolidatedBadge.textContent = 'ADMIN';
+      navConsolidatedBadge.style.background = '#ddd6fe';
+      navConsolidatedBadge.style.color = '#4338ca';
+    } else {
+      navConsolidatedBadge.textContent = 'LIVE STATUS';
+      navConsolidatedBadge.style.background = '#dcfce7';
+      navConsolidatedBadge.style.color = '#15803d';
+    }
+  }
+
+  if (navTransactionsLabel) navTransactionsLabel.textContent = isManager ? 'All Transactions' : 'My Claims & Records';
   if (navSectionConfig) navSectionConfig.style.display = isManager ? 'block' : 'none';
   if (navCreateAccount) navCreateAccount.style.display = isManager ? 'flex' : 'none';
   if (navAdminProfile) navAdminProfile.style.display = isManager ? 'flex' : 'none';
@@ -2019,9 +2048,9 @@ function updateUserInterface() {
     }
   }
 
-  // If consultant attempts to stay on consolidated or settings, redirect to transactions
-  if (!isManager && (AppState.currentView === 'consolidated' || AppState.currentView === 'settings')) {
-    switchView('transactions');
+  // If consultant attempts to stay on settings, redirect to consolidated
+  if (!isManager && AppState.currentView === 'settings') {
+    switchView('consolidated');
     return;
   }
 
@@ -2152,6 +2181,8 @@ function renderConsolidatedReports() {
   const container = document.getElementById('consolidatedReportsContainer');
   if (!container) return;
 
+  const user = AppState.currentUser;
+  const isManager = user && user.role === 'manager';
   const claims = AppState.claims;
   const consultants = AppState.users.filter(u => u.role === 'consultant');
 
@@ -2174,11 +2205,15 @@ function renderConsolidatedReports() {
           <div style="font-size:2rem; margin-bottom:8px;">👥</div>
           <div style="font-weight:700; color:var(--gray-800); font-size:1.05rem; margin-bottom:6px;">No Real Consultants Registered Yet</div>
           <p style="font-size:0.85rem; color:var(--gray-500); max-width:500px; margin:0 auto 16px;">
-            All dummy test profiles have been cleared. Have your real-time consultants click <strong>"+ Create Account"</strong> in the top navigation to register their account. All their submitted petty cash claims will consolidate right here automatically in Philippine Peso (₱).
+            ${isManager 
+              ? `All dummy test profiles have been cleared. Have your real-time consultants click <strong>"+ Create Account"</strong> in the top navigation to register their account. All their submitted petty cash claims will consolidate right here automatically in Philippine Peso (₱).` 
+              : `Spend summaries for team members will appear right here automatically in Philippine Peso (₱) once accounts are created and claims are submitted.`}
           </p>
-          <button class="btn btn-sm btn-primary" onclick="openAuthModal('register')">
-            <span>👤</span> + Register First Real Consultant
-          </button>
+          ${isManager ? `
+            <button class="btn btn-sm btn-primary" onclick="openAuthModal('register')">
+              <span>👤</span> + Register First Real Consultant
+            </button>
+          ` : ''}
         </td>
       </tr>
     `
@@ -2189,6 +2224,12 @@ function renderConsolidatedReports() {
     const releasedSum = cClaims.filter(i => i.status === 'Released').reduce((acc, cur) => acc + cur.amount, 0);
     const refundSum = cClaims.filter(i => i.isClientRefund).reduce((acc, cur) => acc + cur.amount, 0);
     const totalC = pendingSum + releasedSum;
+
+    const actionCell = isManager 
+      ? `<button class="btn btn-sm btn-secondary" onclick="filterByConsultant('${c.id}')">View Claims</button>`
+      : (user && (c.id === user.id || c.email === user.email)
+          ? `<button class="btn btn-sm btn-secondary" onclick="switchView('transactions')">View My Claims</button>`
+          : `<span style="font-size:0.8rem; color:#94a3b8; font-weight:600;">🔒 Team Protected</span>`);
 
     return `
       <tr>
@@ -2209,9 +2250,7 @@ function renderConsolidatedReports() {
         <td style="font-weight:700; color:#0284c7;">${formatCurrency(refundSum)}</td>
         <td style="font-weight:800; color:#0f172a; font-size:0.95rem;">${formatCurrency(totalC)}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="filterByConsultant('${c.id}')">
-            View Claims
-          </button>
+          ${actionCell}
         </td>
       </tr>
     `;
@@ -2302,11 +2341,15 @@ function renderConsolidatedReports() {
           <div style="font-size:1.6rem; margin-bottom:6px;">📦</div>
           <div style="font-weight:700; color:var(--gray-800); margin-bottom:4px;">No Replenishment Batches Submitted Yet</div>
           <p style="font-size:0.8rem; color:var(--gray-500); max-width:440px; margin:0 auto 12px;">
-            When vouchers in your cash box build up or cash runs low, click <strong>"Submit for Replenishment"</strong> to package them into an audit batch for Treasury reimbursement.
+            ${isManager
+              ? `When vouchers in your cash box build up or cash runs low, click <strong>"Submit for Replenishment"</strong> to package them into an audit batch for Treasury reimbursement.`
+              : `The Admin Custodian submits released vouchers for Treasury reimbursement when the cash drawer requires replenishment. All replenishment records will appear here for transparency.`}
           </p>
-          <button class="btn btn-sm btn-primary" onclick="openSubmitReplenishmentModal()">
-            <span>📤</span> Submit Released Vouchers for Replenishment
-          </button>
+          ${isManager ? `
+            <button class="btn btn-sm btn-primary" onclick="openSubmitReplenishmentModal()">
+              <span>📤</span> Submit Released Vouchers for Replenishment
+            </button>
+          ` : ''}
         </td>
       </tr>
     `
@@ -2316,9 +2359,13 @@ function renderConsolidatedReports() {
         ? `<span class="badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:700;">⏳ Awaiting Reimbursement Check</span>`
         : `<span class="badge" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700;">✅ Restored & Settled (${escapeHtml(b.checkRef || 'Received')})</span>`;
 
-      const actionBtn = isPending
-        ? `<button class="btn btn-sm btn-success" onclick="openReceiveReplenishmentModal()" title="Acknowledge reimbursement check">📥 Receive Check</button>`
-        : `<span style="font-size:0.75rem; color:#64748b; font-weight:600;">Float Restored</span>`;
+      const actionBtn = isManager
+        ? (isPending
+            ? `<button class="btn btn-sm btn-success" onclick="openReceiveReplenishmentModal()" title="Acknowledge reimbursement check">📥 Receive Check</button>`
+            : `<span style="font-size:0.75rem; color:#64748b; font-weight:600;">Float Restored</span>`)
+        : (isPending
+            ? `<span class="badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600; font-size:0.75rem;">⏳ In Transit with Treasury</span>`
+            : `<span class="badge" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:600; font-size:0.75rem;">✅ Float Restored</span>`);
 
       return `
         <tr>
@@ -2333,6 +2380,21 @@ function renderConsolidatedReports() {
     }).join('');
 
   container.innerHTML = `
+    ${!isManager ? `
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:12px 18px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:1.4rem;">👁️</span>
+          <div>
+            <strong style="color:#166534; font-size:0.92rem;">Petty Cash Fund Telemetry (Read-Only Status)</strong>
+            <div style="color:#15803d; font-size:0.8rem; margin-top:2px;">
+              Live overview of petty cash float balance, cash in drawer, and replenishment batches. Changes are managed exclusively by the Admin Custodian.
+            </div>
+          </div>
+        </div>
+        <span class="badge" style="background:#dcfce7; color:#166534; font-weight:700; padding:6px 12px; border-radius:8px; font-size:0.75rem;">🔒 READ-ONLY TELEMETRY</span>
+      </div>
+    ` : ''}
+
     <div class="consolidated-kpi-bar">
       <div class="consolidated-metric-card" style="border-top:4px solid #4f46e5;">
         <span class="consolidated-metric-title">Consolidated Spend (PHP)</span>
@@ -2343,7 +2405,7 @@ function renderConsolidatedReports() {
       <div class="consolidated-metric-card" style="border-top:4px solid #f59e0b;">
         <span class="consolidated-metric-title">Pending Authorizations</span>
         <div class="consolidated-metric-val" style="color:#d97706;">${formatCurrency(totalPending)}</div>
-        <div class="consolidated-metric-sub">Awaiting your approval</div>
+        <div class="consolidated-metric-sub">${isManager ? 'Awaiting your approval' : 'Awaiting Admin authorization'}</div>
       </div>
 
       <div class="consolidated-metric-card" style="border-top:4px solid #10b981;">
@@ -2365,11 +2427,17 @@ function renderConsolidatedReports() {
           <h3 class="card-title">👥 Consolidated Consultant Spend Matrix</h3>
           <div style="font-size:0.8rem; color:#64748b;">Consolidated ledger of reimbursement claims categorized per consultant in Philippine Peso (₱)</div>
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-sm btn-secondary" onclick="openEditAdminModal()">✏️ Edit Admin Profile</button>
-          <button class="btn btn-sm btn-secondary" onclick="openAuthModal('register')">➕ Create Account</button>
-          <button class="btn btn-sm btn-primary" onclick="printExecutiveReport()">🖨️ Print Executive Report</button>
-        </div>
+        ${isManager ? `
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-secondary" onclick="openEditAdminModal()">✏️ Edit Admin Profile</button>
+            <button class="btn btn-sm btn-secondary" onclick="openAuthModal('register')">➕ Create Account</button>
+            <button class="btn btn-sm btn-primary" onclick="printExecutiveReport()">🖨️ Print Executive Report</button>
+          </div>
+        ` : `
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-primary" onclick="printExecutiveReport()">🖨️ Print Summary Report</button>
+          </div>
+        `}
       </div>
       <div class="table-responsive">
         <table class="data-table">
@@ -2400,17 +2468,25 @@ function renderConsolidatedReports() {
             Track vouchers submitted to Treasury/Finance for reimbursement and monitor cash drawer restitution
           </div>
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-sm btn-primary" onclick="openSubmitReplenishmentModal()">
-            <span>📤</span> Submit for Replenishment
-          </button>
-          <button class="btn btn-sm btn-secondary" onclick="openReceiveReplenishmentModal()">
-            <span>📥</span> Receive Replenishment
-          </button>
-          <button class="btn btn-sm btn-secondary" onclick="openEditPcfModal()">
-            <span>✏️</span> Set PCF Float
-          </button>
-        </div>
+        ${isManager ? `
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-primary" onclick="openSubmitReplenishmentModal()">
+              <span>📤</span> Submit for Replenishment
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="openReceiveReplenishmentModal()">
+              <span>📥</span> Receive Replenishment
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="openEditPcfModal()">
+              <span>✏️</span> Set PCF Float
+            </button>
+          </div>
+        ` : `
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <div class="badge" style="background:#f1f5f9; color:#475569; padding:6px 12px; border-radius:6px; font-weight:600; font-size:0.8rem;">
+              🔒 Managed by Admin Custodian
+            </div>
+          </div>
+        `}
       </div>
       <div class="table-responsive">
         <table class="data-table">
@@ -3328,9 +3404,9 @@ function renderAll() {
 
 function switchView(viewName) {
   const isManager = AppState.currentUser && AppState.currentUser.role === 'manager';
-  if (!isManager && (viewName === 'consolidated' || viewName === 'dashboard' || viewName === 'settings')) {
-    showToast("Access Restricted: Only Admin accounts can access settings or consolidated views.", "warning");
-    viewName = 'transactions';
+  if (!isManager && viewName === 'settings') {
+    showToast("Access Restricted: System configuration is restricted to Admin.", "warning");
+    viewName = 'consolidated';
   }
 
   AppState.currentView = viewName;
@@ -3357,8 +3433,10 @@ function switchView(viewName) {
     switch (viewName) {
       case 'consolidated':
       case 'dashboard':
-        pageTitle.textContent = "Executive Consolidated Reports (₱ PHP)";
-        pageSubtitle.textContent = `Managed by ${curName} • Master financial exposure and live updates`;
+        pageTitle.textContent = isManager ? "Executive Consolidated Reports (₱ PHP)" : "Petty Cash Fund & Team Dashboard (₱ PHP)";
+        pageSubtitle.textContent = isManager
+          ? `Managed by ${curName} • Master financial exposure and live updates`
+          : `Live PCF Status & Company Float Overview • Read-Only Telemetry`;
         break;
       case 'transactions':
         pageTitle.textContent = "Reimbursement Transactions (₱ PHP)";
