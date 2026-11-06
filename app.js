@@ -208,7 +208,8 @@ function handleSaveAdminProfile(event) {
 
   // Always update active session to the updated admin
   AppState.currentUser = updatedAdmin;
-  localStorage.setItem(STORAGE_KEY_USER, updatedAdmin.id);
+  sessionStorage.setItem('PETTY_CASH_ACTIVE_ADMIN_SESSION', updatedAdmin.id);
+  localStorage.removeItem(STORAGE_KEY_USER);
 
   // Sync with default seed in memory
   if (window.DEFAULT_SEED_DATA && window.DEFAULT_SEED_DATA.users) {
@@ -262,15 +263,29 @@ function saveUsersList() {
 }
 
 function loadStoredUser() {
+  // 1. Check if active admin session exists for this current browser tab
+  const activeAdminId = sessionStorage.getItem('PETTY_CASH_ACTIVE_ADMIN_SESSION');
+  if (activeAdminId) {
+    const adminUser = AppState.users.find(u => u.id === activeAdminId && u.role === 'manager');
+    if (adminUser) {
+      AppState.currentUser = adminUser;
+      return;
+    }
+  }
+
+  // 2. Check for consultant remembered login (consultants only)
   const savedUserId = localStorage.getItem(STORAGE_KEY_USER);
   if (savedUserId) {
     const foundUser = AppState.users.find(u => u.id === savedUserId);
-    if (foundUser) {
+    if (foundUser && foundUser.role !== 'manager' && foundUser.id !== 'admin-you') {
       AppState.currentUser = foundUser;
       return;
     }
   }
-  // NEVER default to Admin in Incognito or on fresh browsers!
+
+  // 3. Admin accounts NEVER persist in localStorage across sessions without entering password!
+  localStorage.removeItem(STORAGE_KEY_USER);
+  sessionStorage.removeItem('PETTY_CASH_ACTIVE_ADMIN_SESSION');
   AppState.currentUser = null;
   AppState.currentView = 'transactions';
 }
@@ -279,7 +294,16 @@ function setCurrentUser(userId) {
   const user = AppState.users.find(u => u.id === userId);
   if (!user) return;
   AppState.currentUser = user;
-  localStorage.setItem(STORAGE_KEY_USER, user.id);
+
+  if (user.role === 'manager' || user.id === 'admin-you') {
+    // Admin session is temporary for this browser tab only (cleared on tab close)
+    sessionStorage.setItem('PETTY_CASH_ACTIVE_ADMIN_SESSION', user.id);
+    localStorage.removeItem(STORAGE_KEY_USER);
+  } else {
+    // Consultant session
+    localStorage.setItem(STORAGE_KEY_USER, user.id);
+    sessionStorage.removeItem('PETTY_CASH_ACTIVE_ADMIN_SESSION');
+  }
   
   if (user.role === 'consultant') {
     AppState.filters.consultantId = "all";
@@ -554,6 +578,7 @@ async function apiSyncPull(isSilent = false) {
       }
 
       if (changed) {
+        updateUserInterface();
         renderAll();
       }
 
@@ -1643,6 +1668,7 @@ async function handleLogin(e) {
 function handleLogout() {
   AppState.currentUser = null;
   localStorage.removeItem(STORAGE_KEY_USER);
+  sessionStorage.removeItem('PETTY_CASH_ACTIVE_ADMIN_SESSION');
   switchView('transactions');
   updateUserInterface();
   renderAll();
@@ -1888,13 +1914,23 @@ function updateUserInterface() {
 
   // Topbar Controls Visibility
   const topbarRoleSwitch = document.getElementById('topbarRoleSwitchContainer');
+  const topbarAdminPill = document.getElementById('topbarAdminPill');
+  const topbarAdminName = document.getElementById('topbarAdminName');
+  const topbarAdminAvatar = document.getElementById('topbarAdminAvatar');
   const topbarConsultantPill = document.getElementById('topbarConsultantPill');
   const consultantPillAvatar = document.getElementById('consultantPillAvatar');
   const consultantPillName = document.getElementById('consultantPillName');
   const btnTopAdminProfile = document.getElementById('btnTopAdminProfile');
   const btnTopCreateAccount = document.getElementById('btnTopCreateAccount');
 
-  if (topbarRoleSwitch) topbarRoleSwitch.style.display = isManager ? 'flex' : 'none';
+  if (topbarRoleSwitch) topbarRoleSwitch.style.display = 'none';
+  if (topbarAdminPill) {
+    topbarAdminPill.style.display = isManager ? 'flex' : 'none';
+    if (isManager) {
+      if (topbarAdminName) topbarAdminName.textContent = user.name;
+      if (topbarAdminAvatar) topbarAdminAvatar.textContent = user.avatar || '👑';
+    }
+  }
   if (topbarConsultantPill) {
     topbarConsultantPill.style.display = isManager ? 'none' : 'flex';
     if (!isManager) {
