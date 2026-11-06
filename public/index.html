@@ -107,8 +107,8 @@
             <span>☰</span>
           </button>
           <div>
-            <h1 class="page-title" id="headerPageTitle">Executive Consolidated Reports (₱ PHP)</h1>
-            <p class="page-subtitle" id="headerPageSubtitle">Philippine Peso petty cash exposure, multi-consultant ledger, and live updates</p>
+            <h1 class="page-title" id="headerPageTitle">Reimbursement Transactions (₱ PHP)</h1>
+            <p class="page-subtitle" id="headerPageSubtitle">Review, manage, and submit petty cash reimbursement claims</p>
           </div>
         </div>
 
@@ -186,8 +186,8 @@
         <!-- Role Notification Banner (explains privileges & allows instant persona switch) -->
         <div id="roleHelpBanner"></div>
 
-        <!-- VIEW 1: Consolidated Reports & Executive Overview (DEFAULT FOR ADMIN) -->
-        <div id="view-consolidated">
+        <!-- VIEW 1: Consolidated Reports & Executive Overview (ADMIN ONLY) -->
+        <div id="view-consolidated" style="display:none;">
           <!-- PCF & Replenishment Monitor Banner -->
           <div id="pcfBannerConsolidated"></div>
           <div id="consolidatedReportsContainer">
@@ -195,8 +195,8 @@
           </div>
         </div>
 
-        <!-- VIEW 2: Transactions / Monitor Table View -->
-        <div id="view-transactions" style="display:none;">
+        <!-- VIEW 2: Transactions / Monitor Table View (DEFAULT FOR GUESTS & CONSULTANTS) -->
+        <div id="view-transactions">
           <!-- PCF & Replenishment Monitor Banner -->
           <div id="pcfBannerTransactions"></div>
           

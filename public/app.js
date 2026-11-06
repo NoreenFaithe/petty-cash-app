@@ -37,7 +37,7 @@ const AppState = {
     dateFrom: "",
     dateTo: ""
   },
-  currentView: "consolidated",
+  currentView: "transactions",
   activeReceipt: null,
   receiptZoom: 1,
   receiptRotation: 0,
@@ -1806,6 +1806,14 @@ function updateUserInterface() {
     if (navCreateAccount) navCreateAccount.style.display = 'none';
     if (navAdminProfile) navAdminProfile.style.display = 'none';
     if (navSettings) navSettings.style.display = 'none';
+
+    // Force non-admin view for guests
+    const viewConsolidated = document.getElementById('view-consolidated');
+    const viewSettings = document.getElementById('view-settings');
+    const viewTransactions = document.getElementById('view-transactions');
+    if (viewConsolidated) viewConsolidated.style.display = 'none';
+    if (viewSettings) viewSettings.style.display = 'none';
+    if (viewTransactions) viewTransactions.style.display = 'block';
 
     // Topbar Controls
     const topbarRoleSwitch = document.getElementById('topbarRoleSwitchContainer');
