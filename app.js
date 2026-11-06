@@ -27,6 +27,7 @@ const AppState = {
   adminPasscode: "ADMIN2026",
   currentUser: null,
   claims: [],
+  deletedClaimIds: [],
   filters: {
     tab: "all",
     search: "",
@@ -99,6 +100,9 @@ function loadAdminProfile() {
   const savedPasscode = localStorage.getItem(STORAGE_KEY_ADMIN_PASSCODE) || localStorage.getItem("PETTY_CASH_ADMIN_PASSCODE_V4_PHP");
   if (savedPasscode) {
     AppState.adminPasscode = savedPasscode;
+    if (savedPasscode !== 'ADMIN2026') {
+      localStorage.setItem('PETTY_CASH_ADMIN_PASSCODE_CUSTOMIZED', 'true');
+    }
   }
 
   const savedAdminJson = localStorage.getItem(STORAGE_KEY_ADMIN_PROFILE) || localStorage.getItem("PETTY_CASH_ADMIN_PROFILE_V4_PHP");
@@ -194,6 +198,7 @@ function handleSaveAdminProfile(event) {
   if (passcode) {
     AppState.adminPasscode = passcode;
     localStorage.setItem(STORAGE_KEY_ADMIN_PASSCODE, passcode);
+    localStorage.setItem('PETTY_CASH_ADMIN_PASSCODE_CUSTOMIZED', 'true');
   }
 
   // Save to persistent storage
@@ -288,15 +293,25 @@ function setCurrentUser(userId) {
 }
 
 function loadClaimsData() {
+  const storedDeleted = localStorage.getItem('PETTY_CASH_DELETED_CLAIM_IDS');
+  if (storedDeleted) {
+    try {
+      const parsed = JSON.parse(storedDeleted);
+      if (Array.isArray(parsed)) AppState.deletedClaimIds = parsed;
+    } catch (_) {
+      AppState.deletedClaimIds = [];
+    }
+  }
+
   const storedJson = localStorage.getItem(STORAGE_KEY_CLAIMS);
   if (storedJson) {
     try {
       let claims = JSON.parse(storedJson);
       if (Array.isArray(claims)) {
-        // Strip out any dummy consultant claims
+        // Strip out any dummy consultant claims and permanently deleted claims
         const dummyIds = ['c1', 'c2', 'c3'];
         const dummyNames = ['Sarah Jenkins', 'Alex Rivera', 'Marcus Brody'];
-        claims = claims.filter(c => !dummyIds.includes(c.consultantId) && !dummyNames.includes(c.consultantName));
+        claims = claims.filter(c => !dummyIds.includes(c.consultantId) && !dummyNames.includes(c.consultantName) && !AppState.deletedClaimIds.includes(c.id));
         AppState.claims = claims;
         return;
       }
@@ -373,61 +388,118 @@ async function apiSyncPull(isSilent = false) {
       const data = await res.json();
       let changed = false;
 
-      // 1. Sync claims across all laptops/units (with non-destructive team merge)
-      if (Array.isArray(data.claims)) {
-        if (data.claims.length > 0) {
-          const remoteIds = new Set(data.claims.map(c => c.id));
-          const localOnly = AppState.claims.filter(c => !remoteIds.has(c.id) && c.createdAt && (Date.now() - new Date(c.createdAt).getTime() < 300000));
-          
-          let mergedClaims = data.claims;
-          if (localOnly.length > 0) {
-            mergedClaims = [...localOnly, ...data.claims];
-            setTimeout(apiSyncPush, 200);
-          }
+      // 0. Merge deleted claims tombstones (so deletions across all devices are permanent)
+      if (Array.isArray(data.deletedClaimIds)) {
+        const mergedDeleted = Array.from(new Set([...AppState.deletedClaimIds, ...data.deletedClaimIds]));
+        if (mergedDeleted.length !== AppState.deletedClaimIds.length) {
+          AppState.deletedClaimIds = mergedDeleted;
+          localStorage.setItem('PETTY_CASH_DELETED_CLAIM_IDS', JSON.stringify(AppState.deletedClaimIds));
+        }
+      }
 
+      // 1. Sync claims across all laptops/units
+      if (Array.isArray(data.claims)) {
+        // Always strip any claims that have been deleted
+        const remoteClean = data.claims.filter(c => c && c.id && !AppState.deletedClaimIds.includes(c.id));
+
+        if (remoteClean.length === 0) {
+          // Cloud has no active claims
+          const localActive = AppState.claims.filter(c => c && c.id && !AppState.deletedClaimIds.includes(c.id));
+          if (localActive.length === 0) {
+            if (AppState.claims.length > 0) {
+              AppState.claims = [];
+              localStorage.setItem(STORAGE_KEY_CLAIMS, JSON.stringify([]));
+              changed = true;
+            }
+          } else {
+            // Local has recent claims created in the last 5 minutes that need pushing
+            const localOnly = localActive.filter(c => c.createdAt && (Date.now() - new Date(c.createdAt).getTime() < 300000));
+            if (localOnly.length > 0) {
+              AppState.claims = localOnly;
+              localStorage.setItem(STORAGE_KEY_CLAIMS, JSON.stringify(AppState.claims));
+              changed = true;
+              setTimeout(apiSyncPush, 200);
+            } else {
+              // Local claims were deleted on another device or wiped
+              AppState.claims = [];
+              localStorage.setItem(STORAGE_KEY_CLAIMS, JSON.stringify([]));
+              changed = true;
+            }
+          }
+        } else {
+          // Cloud has active claims
+          const remoteIds = new Set(remoteClean.map(c => c.id));
+          const localOnly = AppState.claims.filter(c => 
+            c && c.id && 
+            !remoteIds.has(c.id) && 
+            !AppState.deletedClaimIds.includes(c.id) && 
+            c.createdAt && 
+            (Date.now() - new Date(c.createdAt).getTime() < 300000)
+          );
+
+          const mergedClaims = [...localOnly, ...remoteClean];
           if (JSON.stringify(AppState.claims) !== JSON.stringify(mergedClaims)) {
             AppState.claims = mergedClaims;
             localStorage.setItem(STORAGE_KEY_CLAIMS, JSON.stringify(AppState.claims));
             changed = true;
           }
+
+          if (localOnly.length > 0) {
+            setTimeout(apiSyncPush, 200);
+          }
         }
       }
 
-      // 2. Sync consultants & single admin across all laptops/units
-      if (Array.isArray(data.users)) {
-        // Enforce: ONLY ONE ADMIN allowed (customized admin profile)
-        const localAdmin = AppState.users.find(u => u.id === 'admin-you' || u.role === 'manager') || AppState.users[0];
-        const cloudAdmin = data.users.find(u => u.id === 'admin-you' || u.role === 'manager');
-        const activeAdmin = (cloudAdmin && cloudAdmin.email && cloudAdmin.email !== 'admin@company.com') ? cloudAdmin : localAdmin;
+      // 2. Sync consultants & single master admin across all laptops/units
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        // Enforce: ONLY ONE ADMIN allowed (customized admin profile takes priority)
+        const cloudCustomAdmin = data.users.find(u => u && (u.role === 'manager' || u.id === 'admin-you') && u.email && u.email !== 'admin@company.com');
+        const cloudDefaultAdmin = data.users.find(u => u && (u.role === 'manager' || u.id === 'admin-you'));
+        const localCustomAdmin = AppState.users.find(u => u && (u.role === 'manager' || u.id === 'admin-you') && u.email && u.email !== 'admin@company.com');
+        const localDefaultAdmin = AppState.users.find(u => u && (u.role === 'manager' || u.id === 'admin-you')) || AppState.users[0];
 
-        // Build unified list of consultants (no duplicates, no lost accounts)
+        let masterAdmin = localCustomAdmin || cloudCustomAdmin || localDefaultAdmin || cloudDefaultAdmin;
+        masterAdmin = { ...masterAdmin, id: 'admin-you', role: 'manager' };
+
+        // Unified list of consultants (no duplicates, no lost accounts)
         const consultantMap = new Map();
-        
+
         // 1. Add cloud consultants
         data.users.forEach(u => {
-          if (u && u.id !== 'admin-you' && u.role !== 'manager') {
+          if (!u || !u.id) return;
+          const isThisAdmin = (u.id === masterAdmin.id) || 
+                              (masterAdmin.email && u.email && u.email.toLowerCase() === masterAdmin.email.toLowerCase()) || 
+                              (u.id === 'admin-you') || 
+                              (u.role === 'manager' && masterAdmin.email !== 'admin@company.com');
+          if (!isThisAdmin) {
             const key = (u.email || u.id).toLowerCase();
-            consultantMap.set(key, u);
+            consultantMap.set(key, { ...u, role: 'consultant' });
           }
         });
 
-        // 2. Add local consultants (so any consultant created locally is preserved and pushed)
+        // 2. Add local consultants
         let localHasUnsynced = false;
         AppState.users.forEach(u => {
-          if (u && u.id !== 'admin-you' && u.role !== 'manager') {
+          if (!u || !u.id) return;
+          const isThisAdmin = (u.id === masterAdmin.id) || 
+                              (masterAdmin.email && u.email && u.email.toLowerCase() === masterAdmin.email.toLowerCase()) || 
+                              (u.id === 'admin-you') || 
+                              (u.role === 'manager');
+          if (!isThisAdmin) {
             const key = (u.email || u.id).toLowerCase();
             if (!consultantMap.has(key)) {
-              consultantMap.set(key, u);
+              consultantMap.set(key, { ...u, role: 'consultant' });
               localHasUnsynced = true;
             }
           }
         });
 
-        const merged = [activeAdmin, ...Array.from(consultantMap.values())];
+        const merged = [masterAdmin, ...Array.from(consultantMap.values())];
 
         if (JSON.stringify(AppState.users) !== JSON.stringify(merged)) {
           AppState.users = merged;
           localStorage.setItem(STORAGE_KEY_USERS_LIST, JSON.stringify(AppState.users));
+          localStorage.setItem(STORAGE_KEY_ADMIN_PROFILE, JSON.stringify(masterAdmin));
           populateDropdowns();
           renderQuickLoginList();
           changed = true;
@@ -455,18 +527,29 @@ async function apiSyncPull(isSilent = false) {
         }
       }
 
+      // 4. Sync Admin Password (prevent reverting to ADMIN2026)
       if (data.adminPasscode && typeof data.adminPasscode === 'string' && data.adminPasscode.trim()) {
-        if (AppState.adminPasscode !== data.adminPasscode) {
-          AppState.adminPasscode = data.adminPasscode;
-          localStorage.setItem(STORAGE_KEY_ADMIN_PASSCODE, data.adminPasscode);
+        const isLocalCustom = localStorage.getItem('PETTY_CASH_ADMIN_PASSCODE_CUSTOMIZED') === 'true';
+        if (data.adminPasscode !== 'ADMIN2026') {
+          // Cloud has a customized password - adopt it!
+          if (AppState.adminPasscode !== data.adminPasscode) {
+            AppState.adminPasscode = data.adminPasscode;
+            localStorage.setItem(STORAGE_KEY_ADMIN_PASSCODE, data.adminPasscode);
+            localStorage.setItem('PETTY_CASH_ADMIN_PASSCODE_CUSTOMIZED', 'true');
+          }
+        } else if (isLocalCustom && AppState.adminPasscode !== 'ADMIN2026') {
+          // Cloud has default ADMIN2026, but this device has a custom password.
+          // Do NOT downgrade! Instead re-push our custom password to the cloud.
+          setTimeout(apiSyncPush, 300);
         }
       }
 
-      // 4. Auto-Seed Cloud Database if it was newly connected and this browser has local records/accounts
+      // 5. Auto-Seed Cloud Database if newly connected and local has legitimate customized data
       const isCloudEmpty = (!data.claims || data.claims.length === 0) && (!data.users || data.users.length <= 1) && (!data.replenishments || data.replenishments.length === 0);
-      const hasLocalData = AppState.claims.length > 0 || (AppState.users && AppState.users.length > 1) || (AppState.pcfAmount && AppState.pcfAmount !== 5000);
-      if (isCloudEmpty && hasLocalData) {
-        console.log("Central database is newly connected and empty. Seeding with current accounts and records...");
+      const isLocalCustomized = (AppState.users && AppState.users.some(u => u.email && u.email !== 'admin@company.com')) || 
+                                (AppState.adminPasscode && AppState.adminPasscode !== 'ADMIN2026');
+      if (isCloudEmpty && isLocalCustomized) {
+        console.log("Central database connected. Seeding with current team accounts and configuration...");
         apiSyncPush();
       }
 
@@ -493,14 +576,22 @@ async function apiSyncPull(isSilent = false) {
 
 async function apiSyncPush() {
   try {
+    const isCustomPasscode = (AppState.adminPasscode && AppState.adminPasscode !== 'ADMIN2026') || 
+                             localStorage.getItem('PETTY_CASH_ADMIN_PASSCODE_CUSTOMIZED') === 'true';
+
+    // Filter out any claim in deletedClaimIds before pushing
+    const cleanClaims = (AppState.claims || []).filter(c => c && c.id && !AppState.deletedClaimIds.includes(c.id));
+
     const payload = {
-      claims: AppState.claims,
+      claims: cleanClaims,
+      deletedClaimIds: AppState.deletedClaimIds || [],
       users: AppState.users,
       pcfAmount: AppState.pcfAmount,
       replenishments: AppState.replenishments,
-      adminPasscode: AppState.adminPasscode,
+      adminPasscode: isCustomPasscode ? AppState.adminPasscode : undefined,
       updatedAt: new Date().toISOString()
     };
+
     await fetch('/api/db', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1346,6 +1437,7 @@ function handleExecuteReceiveReplenishment(event) {
 
 // 3. Self-Service Account Creation & Login
 function openAuthModal(initialTab = 'register') {
+  apiSyncPull(true);
   switchAuthTab(initialTab);
   renderQuickLoginList();
   openModal('authModal');
@@ -1397,8 +1489,8 @@ function handleRegister(e) {
   const name = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim().toLowerCase();
   const role = document.getElementById('regRole').value || 'consultant';
-  const title = document.getElementById('regTitle').value.trim() || (role === 'manager' ? 'Manager' : 'Consultant');
-  const dept = document.getElementById('regDept').value.trim() || 'Client Consulting';
+  const title = document.getElementById('regTitle').value.trim() || (role === 'manager' ? 'Finance Controller & Approver' : 'Consultant');
+  const dept = document.getElementById('regDept').value.trim() || (role === 'manager' ? 'Executive Finance' : 'Client Consulting');
   const adminCode = document.getElementById('regAdminCode').value.trim();
 
   if (!name || !email) {
@@ -1410,16 +1502,42 @@ function handleRegister(e) {
     if (adminCode !== AppState.adminPasscode) {
       return showToast("Incorrect Admin Passcode! Admin authorization required to register manager account.", "danger");
     }
+
+    // Only ONE Admin is allowed! Update the Master Admin account profile
+    const adminIndex = AppState.users.findIndex(u => u.id === 'admin-you' || u.role === 'manager');
+    const updatedAdmin = {
+      id: "admin-you",
+      name: name,
+      email: email,
+      title: title || "Finance Controller & Approver",
+      dept: dept || "Executive Finance",
+      avatar: getConsultantInitials(name),
+      role: "manager",
+      color: "#0f172a"
+    };
+
+    if (adminIndex !== -1) {
+      AppState.users[adminIndex] = updatedAdmin;
+    } else {
+      AppState.users.unshift(updatedAdmin);
+    }
+
+    localStorage.setItem(STORAGE_KEY_ADMIN_PROFILE, JSON.stringify(updatedAdmin));
+    saveUsersList();
+    closeModal('authModal');
+    setCurrentUser(updatedAdmin.id);
+    showToast(`Master Admin account set to ${name} (${email})!`, "success");
+    return;
   }
 
-  // Check email collision
-  const existing = AppState.users.find(u => u.email.toLowerCase() === email);
+  // Consultant Registration
+  const existing = AppState.users.find(u => u.email && u.email.toLowerCase() === email);
   if (existing) {
     return showToast(`An account with email "${email}" already exists. Please log in instead.`, "warning");
   }
 
   const colors = ["#7c3aed", "#059669", "#d97706", "#2563eb", "#db2777", "#4f46e5", "#0891b2"];
-  const randomColor = (role === 'manager') ? '#0f172a' : colors[Math.floor(Math.random() * colors.length)];
+  const randomColor = colors[Math.floor(Math.random() * colors.length)];
   const initials = getConsultantInitials(name);
   const newId = `usr_${Date.now()}`;
 
@@ -1427,7 +1545,7 @@ function handleRegister(e) {
     id: newId,
     name: name,
     email: email,
-    role: role,
+    role: 'consultant',
     title: title,
     dept: dept,
     avatar: initials,
@@ -1442,7 +1560,7 @@ function handleRegister(e) {
   closeModal('authModal');
   setCurrentUser(newId);
 
-  showToast(`Welcome, ${name}! Your account has been registered.`, "success");
+  showToast(`Welcome, ${name}! Your consultant account has been registered.`, "success");
 }
 
 function onLoginEmailChange(val) {
@@ -1451,8 +1569,8 @@ function onLoginEmailChange(val) {
   const pwdInput = document.getElementById('loginPassword');
   if (!pwdGroup) return;
 
-  const admin = AppState.users.find(u => u.id === 'admin-you' || u.role === 'manager') || AppState.users[0];
-  const isAdmin = admin && admin.email && admin.email.toLowerCase() === email;
+  const masterAdmin = AppState.users.find(u => u.id === 'admin-you' || u.role === 'manager') || AppState.users[0];
+  const isAdmin = (masterAdmin && masterAdmin.email && masterAdmin.email.toLowerCase() === email) || email === 'admin@company.com';
 
   if (isAdmin) {
     pwdGroup.style.display = 'block';
@@ -1476,21 +1594,24 @@ async function handleLogin(e) {
     return showToast("Please enter your registered work email.", "warning");
   }
 
-  // 1. Check local users list
-  let user = AppState.users.find(u => u.email && u.email.toLowerCase() === email);
+  // 1. First sync with central cloud database to fetch any recently registered team accounts
+  await apiSyncPull(true);
 
-  // 2. If not found in local browser, pull latest accounts from central cloud database
-  if (!user) {
-    await apiSyncPull(true);
-    user = AppState.users.find(u => u.email && u.email.toLowerCase() === email);
+  // 2. Identify target user
+  const masterAdmin = AppState.users.find(u => u.role === 'manager' || u.id === 'admin-you') || AppState.users[0];
+  const isAdminEmail = (masterAdmin && masterAdmin.email && masterAdmin.email.toLowerCase() === email) || email === 'admin@company.com';
+
+  let user = AppState.users.find(u => u.email && u.email.toLowerCase() === email);
+  if (!user && isAdminEmail) {
+    user = masterAdmin;
   }
 
   if (!user) {
-    return showToast("Account not found with this email. Please ensure your cloud database is deployed or create an account.", "warning");
+    return showToast("Account not found with this email. Please check spelling or click 'Create Account' to register.", "warning");
   }
 
   // 3. Password Verification for Admin Account
-  const isAdmin = (user.role === 'manager' || user.id === 'admin-you');
+  const isAdmin = (user.role === 'manager' || user.id === 'admin-you' || isAdminEmail);
   if (isAdmin) {
     const pwdGroup = document.getElementById('loginPasswordGroup');
     if (pwdGroup) pwdGroup.style.display = 'block';
@@ -1534,13 +1655,17 @@ function renderQuickLoginList() {
   if (!container) return;
 
   container.innerHTML = AppState.users.map(u => `
-    <div class="quick-user-card" onclick="quickLoginAs('${u.id}')">
-      <div class="avatar-circle" style="width:30px; height:30px; font-size:0.75rem; background-color:${u.color};">
-        ${u.avatar}
+    <div class="quick-user-card" onclick="quickLoginAs('${u.id}')" title="Sign in as ${escapeHtml(u.name)} (${escapeHtml(u.email || '')})">
+      <div class="avatar-circle" style="width:34px; height:34px; font-size:0.8rem; background-color:${u.color || '#4f46e5'};">
+        ${escapeHtml(u.avatar || getConsultantInitials(u.name))}
       </div>
-      <div style="overflow:hidden;">
-        <div class="quick-user-name">${escapeHtml(u.name)}${u.role === 'manager' ? ' 🔒' : ''}</div>
-        <div class="quick-user-role">${u.role.toUpperCase()}</div>
+      <div style="overflow:hidden; text-align:left;">
+        <div class="quick-user-name" style="font-weight:700; font-size:0.88rem; color:var(--gray-900); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          ${escapeHtml(u.name)}${u.role === 'manager' ? ' 👑' : ''}
+        </div>
+        <div class="quick-user-role" style="font-size:0.75rem; color:var(--gray-500); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          ${escapeHtml(u.email || (u.role === 'manager' ? 'MANAGER' : 'CONSULTANT'))}
+        </div>
       </div>
     </div>
   `).join('');
@@ -2722,6 +2847,12 @@ function executeDeleteClaim() {
 
   const id = claim.id;
 
+  // Record in deletedClaimIds tombstone so it can NEVER be resurrected by sync or polling
+  if (!AppState.deletedClaimIds.includes(id)) {
+    AppState.deletedClaimIds.push(id);
+    localStorage.setItem('PETTY_CASH_DELETED_CLAIM_IDS', JSON.stringify(AppState.deletedClaimIds));
+  }
+
   AppState.claims = AppState.claims.filter(c => c.id !== id);
   saveClaimsToStorage();
   if (AppState.cloudConfig && AppState.cloudConfig.connected) {
@@ -3558,13 +3689,23 @@ function clearAllClaims() {
   if (!AppState.currentUser || AppState.currentUser.role !== 'manager') {
     return showToast("Access Denied: Only Admin can clear transaction data.", "danger");
   }
-  if (confirm("Are you sure you want to delete all transaction entries? This will leave your petty cash ledger completely fresh and empty.")) {
+  if (confirm("Are you sure you want to delete all transaction entries? This will permanently wipe all claims and reset your Consolidated Spend to ₱0.00 across all devices.")) {
+    // Collect all existing claim IDs and add to deletedClaimIds tombstone
+    AppState.claims.forEach(c => {
+      if (c && c.id && !AppState.deletedClaimIds.includes(c.id)) {
+        AppState.deletedClaimIds.push(c.id);
+      }
+    });
+    localStorage.setItem('PETTY_CASH_DELETED_CLAIM_IDS', JSON.stringify(AppState.deletedClaimIds));
+
     AppState.claims = [];
     AppState.replenishments = [];
-    saveClaimsToStorage();
+    localStorage.setItem(STORAGE_KEY_CLAIMS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEY_REPLENISHMENTS, JSON.stringify([]));
+    apiSyncPush();
     savePcfSettings();
     renderAll();
-    showToast("All sample transaction entries have been removed. Ledger is now fresh!", "info");
+    showToast("All transaction entries have been permanently removed. Consolidated Spend reset to ₱0.00!", "success");
   }
 }
 

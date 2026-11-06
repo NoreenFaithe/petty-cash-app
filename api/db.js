@@ -159,6 +159,7 @@ export default async function handler(req, res) {
         }
         return res.status(200).json({
           claims: [],
+          deletedClaimIds: [],
           users: [],
           pcfAmount: 5000.00,
           replenishments: [],
@@ -193,6 +194,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       claims: [],
+      deletedClaimIds: [],
       users: [],
       pcfAmount: 5000.00,
       replenishments: [],
